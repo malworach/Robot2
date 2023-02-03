@@ -8,7 +8,6 @@ Library             RPA.Desktop.OperatingSystem
 Library             OperatingSystem
 Library             RPA.PDF
 Library             RPA.JSON
-Library             RPA.Windows
 Library             RPA.Archive
 Library             RPA.RobotLogListener
 
@@ -19,7 +18,7 @@ Orders robots from RobotSpareBin Industries Inc.
     Download .csv file
     Fill the form using data from the .csv file
     Zip PDF files
-     
+
 
 *** Keywords ***
 Open the robot order website
@@ -37,15 +36,10 @@ Fill and submit form for one order
     Input Text    xpath=//input[@type="number"]    ${order}[Legs]
     Input Text    address    ${order}[Address]
     Click Button    Preview
-    Click Button    order
-    Set Wait Time    4
-    ${button_order_visible}    Is Element Visible    order
-    IF ${button_order_visible} == True    Click button    order
-    Wait Until Element Is Visible    robot-preview-image
+    Wait Until Keyword Succeeds    2 min    500 ms    Make order
     ${screenshot}    RPA.Browser.Selenium.Screenshot
     ...    robot-preview-image
     ...    ${OUTPUT_DIR}${/}${order}[Order number].png
-    #Wait Until Element Is Visible    id:receipt
     ${pdf}    Get Element Attribute    id:receipt    outerHTML
     Html To Pdf    ${pdf}    ${OUTPUT_DIR}${/}receipts/${order}[Order number].pdf
     ${files}    Create List
@@ -54,6 +48,10 @@ Fill and submit form for one order
     Add Files To Pdf    ${files}
     ...    ${OUTPUT_DIR}${/}receipts/${order}[Order number].pdf
     Click Button    order-another
+
+Make order
+    Click Button    Order
+    Page Should Contain Element    id:receipt
 
 Fill the form using data from the .csv file
     Get File    orders.csv
