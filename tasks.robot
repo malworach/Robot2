@@ -1,5 +1,9 @@
 *** Settings ***
-Documentation       Orders robots from RobotSpareBin Industries Inc.    Saves the order HTML receipt as a PDF file. Saves the screenshot of the ordered robot. Embeds the screenshot of the robot to the PDF receipt. Created ZIP archive of the receipts and the images.
+Documentation       Orders robots from RobotSpareBin Industries Inc.
+...                 Saves the order HTML receipt as a PDF file.
+...                 Saves the screenshot of the ordered robot.
+...                 Embeds the screenshot of the robot to the PDF receipt.
+...                 Creates ZIP archive of the receipts and the images.
 
 Library             RPA.Browser.Selenium    auto_close=${FALSE}
 Library             RPA.HTTP
@@ -10,24 +14,30 @@ Library             RPA.PDF
 Library             RPA.JSON
 Library             RPA.Archive
 Library             RPA.RobotLogListener
+Library             Dialogs
+Library             RPA.Robocorp.Vault
 
 
 *** Tasks ***
 Orders robots from RobotSpareBin Industries Inc.
-    Open the robot order website
     Download .csv file
+    Open the robot order website
     Fill the form using data from the .csv file
     Zip PDF files
 
 
 *** Keywords ***
-Open the robot order website
-    Open Available Browser    https://robotsparebinindustries.com/#/robot-order    maximized=True
-
 Download .csv file
-    Download    https://robotsparebinindustries.com/orders.csv    overwrite=True
+    ${url}    Get Value From User
+    ...    Please provide url for .csv file.
+    ...    default_value=https://robotsparebinindustries.com/orders.csv
+    Download    ${url}    overwrite=True
 
-Fill and submit form for one order
+Open the robot order website
+    ${secret}    Get Secret    robot order website
+    Open Available Browser    ${secret}[url]    maximized=True
+
+Fill, submit form for one order and take screenshot
     [Arguments]    ${order}
     Wait Until Page Contains Element    css:div.modal-content
     Click Button    OK
@@ -40,6 +50,13 @@ Fill and submit form for one order
     ${screenshot}    RPA.Browser.Selenium.Screenshot
     ...    robot-preview-image
     ...    ${OUTPUT_DIR}${/}${order}[Order number].png
+
+Make order
+    Click Button    Order
+    Page Should Contain Element    id:receipt
+
+Get PDF receipt
+    [Arguments]    ${order}
     ${pdf}    Get Element Attribute    id:receipt    outerHTML
     Html To Pdf    ${pdf}    ${OUTPUT_DIR}${/}receipts/${order}[Order number].pdf
     ${files}    Create List
@@ -47,17 +64,17 @@ Fill and submit form for one order
     ...    ${OUTPUT_DIR}${/}${order}[Order number].png
     Add Files To Pdf    ${files}
     ...    ${OUTPUT_DIR}${/}receipts/${order}[Order number].pdf
-    Click Button    order-another
 
-Make order
-    Click Button    Order
-    Page Should Contain Element    id:receipt
+Order another robot
+    Click Button    order-another
 
 Fill the form using data from the .csv file
     Get File    orders.csv
     ${orders}    Read table from CSV    orders.csv    header=True
     FOR    ${order}    IN    @{orders}
-        Fill and submit form for one order    ${order}
+        Fill, submit form for one order and take screenshot    ${order}
+        Get PDF receipt    ${order}
+        Order another robot
     END
     Close Browser
 
